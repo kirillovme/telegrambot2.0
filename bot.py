@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 from util.moneycurs import *
 
-bot = telebot.TeleBot('1313518366:AAHBOBQXYIY3UYa8IjOvn-r4TPj8oPiwXvI')
+bot = telebot.TeleBot('')
 
 
 @bot.message_handler(commands=['start', 'help'])
