@@ -23,7 +23,7 @@ def img_command(message):
 def get_input(message):
     if message.content_type == 'text':
         sent = bot.send_message(message.chat.id, "Вы ввели текст.")
-    if message.content_type == 'image':
+    if message.content_type == 'photo':
         sent = bot.send_message(message.chat.id, "Вы отправили изображение.")
     bot.register_next_step_handler(sent, send_commands)
 
