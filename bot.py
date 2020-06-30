@@ -14,22 +14,18 @@ def send_commands(message):
 
 @bot.message_handler(commands=['textorimg'])
 def img_command(message):
-    bot.send_message(message.chat.id, "Отправьте фото или картинку и бот определит, что вы отправили.")
+    hide_markup = telebot.types.ReplyKeyboardRemove()
+    sent = bot.send_message(message.chat.id, "Отправьте фото или картинку и бот определит, что вы отправили.",
+                            reply_markup=hide_markup)
+    bot.register_next_step_handler(sent, get_input)
 
-    @bot.message_handler(content_types=['photo'])
-    def handle_text_image(message):
-        start_markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-        start_markup.row('/start', '/help', '/textorimg')
-        bot.send_message(message.chat.id, 'Вы отправили фото.', reply_markup=start_markup)
-        return None
 
-    @bot.message_handler(content_types=['text'])
-    def handle_text(message):
-        start_markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-        start_markup.row('/start', '/help', '/textorimg')
-        bot.send_message(message.chat.id, 'Вы отправили текст.')
-
-    return None
+def get_input(message):
+    if message.content_type == 'text':
+        sent = bot.send_message(message.chat.id, "Вы ввели текст.")
+    if message.content_type == 'image':
+        sent = bot.send_message(message.chat.id, "Вы отправили изображение.")
+    bot.register_next_step_handler(sent, send_commands)
 
 
 @bot.message_handler(commands=['currency'])
