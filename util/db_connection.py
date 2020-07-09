@@ -1,10 +1,10 @@
 import psycopg2
 
-DB_NAME = "bot_database"
-DB_USER = "postgres"
-DB_PASS = "569274"
-DB_HOST = "192.168.2.129"
-DB_PORT = "5432"
+DB_NAME = ""
+DB_USER = ""
+DB_PASS = ""
+DB_HOST = ""
+DB_PORT = ""
 
 conn = psycopg2.connect(database=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT)
 postgreSQL_select_Query = """ SELECT * FROM EXCHANGE WHERE CHATID = %s"""
