@@ -4,7 +4,7 @@ from util.moneycurs import *
 from datetime import datetime
 from util.db_connection import *
 
-bot = telebot.TeleBot('1313518366:AAHBOBQXYIY3UYa8IjOvn-r4TPj8oPiwXvI')
+bot = telebot.TeleBot('')
 
 current_money = ""
 current_value = 0
