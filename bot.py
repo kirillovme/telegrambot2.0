@@ -8,7 +8,12 @@ bot = telebot.TeleBot('1313518366:AAHBOBQXYIY3UYa8IjOvn-r4TPj8oPiwXvI')
 
 current_money = ""
 current_value = 0
-chat_id = 0
+
+
+def outro_handler(chat_id):
+    start_markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
+    start_markup.row('/textorimg', '/currency', '/exchange', '/history')
+    bot.send_message(chat_id, "Вы возвращены в главное меню", reply_markup=start_markup)
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -28,16 +33,12 @@ def img_command(message):
 
 def get_input(message):
     if message.content_type == 'text':
-        sent = bot.send_message(message.chat.id, "Вы ввели текст. Напишите что-нибудь в чат, чтобы продолжить")
+        bot.send_message(message.chat.id, "Вы ввели текст.")
     elif message.content_type == 'photo':
-        sent = bot.send_message(message.chat.id, "Вы отправили изображение. Напишите что-нибудь в чат,"
-                                                 "чтобы продолжить")
+        bot.send_message(message.chat.id, "Вы отправили изображение.")
     else:
-        sent = bot.send_message(message.chat.id, "Вы отправили что-то другое. Напишите что-нибудь в чат,"
-                                                 "чтобы продолжить")
-    global chat_id
-    chat_id = message.chat.id
-    bot.register_next_step_handler(sent, send_commands)
+        bot.send_message(message.chat.id, "Вы отправили что-то другое.")
+    outro_handler(message.chat.id)
 
 
 @bot.message_handler(commands=['currency'])
@@ -51,30 +52,48 @@ def cur_command(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callback_currencies(call):
     if call.message:
-        money_switcher = {
-            'USD': f"💰Dollar:  {usd_price} руб",
-            'EUR': f"💰Euro: {eur_price} руб",
-            'CAD': f"💰Canadian Dollar: {cad_price} руб"
-        }
-    money_response = money_switcher.get(call.data)
-    if money_response:
-        bot.send_message(call.message.chat.id, money_response)
+        global current_money
+        if call.data == "USD" or call.data == "EUR" or call.data == "CAD":
+            money_switcher = {
+                'USD': f"💰Dollar:  {usd_price} руб",
+                'EUR': f"💰Euro: {eur_price} руб",
+                'CAD': f"💰Canadian Dollar: {cad_price} руб"
+            }
+            money_response = money_switcher.get(call.data)
+            if money_response:
+                bot.send_message(call.message.chat.id, money_response)
+        if call.data == "dollar":
+            bot.edit_message_reply_markup(call.message.chat.id, message_id=call.message.message_id, reply_markup='')
+            current_money = "dollar"
+            sent = bot.send_message(call.message.chat.id,
+                                    "Введите количество рублей для перевода, если значение не целое,"
+                                    "то вводите через точку.")
+            bot.register_next_step_handler(sent, input_value)
+        elif call.data == "euro":
+            bot.edit_message_reply_markup(call.message.chat.id, message_id=call.message.message_id, reply_markup='')
+            current_money = "euro"
+            sent = bot.send_message(call.message.chat.id,
+                                    "Введите количество рублей для перевода, если значение не целое,"
+                                    "то вводите через точку.")
+            bot.register_next_step_handler(sent, input_value)
+        elif call.data == "cdollar":
+            bot.edit_message_reply_markup(call.message.chat.id, message_id=call.message.message_id, reply_markup='')
+            current_money = "cdollar"
+            sent = bot.send_message(call.message.chat.id,
+                                    "Введите количество рублей для перевода, если значение не целое,"
+                                    "то вводите через точку.")
+            bot.register_next_step_handler(sent, input_value)
 
 
 @bot.message_handler(commands=['exchange'])
 def ex_command(message):
     hide_markup = telebot.types.ReplyKeyboardRemove()
-    sent = bot.send_message(message.chat.id, "Введите название нужной валюты(USD Dollar = dollar, Euro = euro, Canadian"
-                                             "dollar = cdollar)", reply_markup=hide_markup)
-    bot.register_next_step_handler(sent, handle_exchange_valute)
-
-
-def handle_exchange_valute(message):
-    global current_money
-    current_money = message.text
-    sent = bot.send_message(message.chat.id, "Введите количество рублей для перевода, если значение не целое,"
-                                             "то вводите через точку.")
-    bot.register_next_step_handler(sent, input_value)
+    money_markup = types.InlineKeyboardMarkup(row_width=1)
+    money_markup.add(types.InlineKeyboardButton(text="USA Dollar", callback_data="dollar"))
+    money_markup.add(types.InlineKeyboardButton(text="Euro", callback_data="euro"))
+    money_markup.add(types.InlineKeyboardButton(text="Canadian dollar", callback_data="cdollar"))
+    bot.send_message(message.chat.id, "Клавиатура скрыта", reply_markup=hide_markup)
+    bot.send_message(message.chat.id, "Choose the valute:", reply_markup=money_markup)
 
 
 def input_value(message):
@@ -85,19 +104,15 @@ def input_value(message):
         bot.send_message(message.chat.id, "Через точку!")
         current_value = None
     global current_money
-    dt_object = datetime.fromtimestamp(message.date)
     cur = conn.cursor()
-    postgre_insert_query = """ INSERT INTO exchange (INVALUTE, OUTVALUTE, INVALUE, OUTVALUE, USERNAME, CHATID,
-        CURDATE) VALUES (%s,%s,%s,%s,%s,%s,%s)"""
     if current_value is None:
-        sent = bot.send_message(message.chat.id, "Всё неправильно ввёл, давай заново. Напиши что-нибудь в чат,"
-                                                 "чтобы продолжить")
+        bot.send_message(message.chat.id, "Всё неправильно ввёл, давай заново.")
     elif current_money == "dollar":
         exchange_result = current_value / usd_price
-        sent = bot.send_message(message.chat.id, exchange_result)
+        bot.send_message(message.chat.id, exchange_result)
         try:
             record_to_insert = ("RUB", current_money, current_value, exchange_result, message.chat.username,
-                                message.chat.id, dt_object)
+                                message.chat.id, datetime.fromtimestamp(message.date))
             cur.execute(postgre_insert_query, record_to_insert)
             conn.commit()
         except (Exception, psycopg2.Error) as error:
@@ -108,10 +123,10 @@ def input_value(message):
                 cur.close()
     elif current_money == "euro":
         exchange_result = current_value / eur_price
-        sent = bot.send_message(message.chat.id, exchange_result)
+        bot.send_message(message.chat.id, exchange_result)
         try:
             record_to_insert = ("RUB", current_money, current_value, exchange_result, message.chat.username,
-                                message.chat.id, dt_object)
+                                message.chat.id, datetime.fromtimestamp(message.date))
             cur.execute(postgre_insert_query, record_to_insert)
             conn.commit()
         except (Exception, psycopg2.Error) as error:
@@ -122,9 +137,9 @@ def input_value(message):
                 cur.close()
     elif current_money == "cdollar":
         exchange_result = current_value / cad_price
-        sent = bot.send_message(message.chat.id, exchange_result)
+        bot.send_message(message.chat.id, exchange_result)
         record_to_insert = ("RUB", current_money, current_value, exchange_result, message.chat.username,
-                            message.chat.id, dt_object)
+                            message.chat.id, datetime.fromtimestamp(message.date))
         try:
             cur.execute(postgre_insert_query, record_to_insert)
             conn.commit()
@@ -135,32 +150,24 @@ def input_value(message):
             if conn:
                 cur.close()
     else:
-        sent = bot.send_message(message.chat.id, "Введите корректные данные. Напиши, что-нибудь в чат, чтобы"
-                                                 "продолжить")
+        bot.send_message(message.chat.id, "Введите корректные данные.")
     current_value = 0
     current_money = ""
-    global chat_id
-    chat_id = message.chat.id
-    bot.register_next_step_handler(sent, send_commands)
+    outro_handler(message.chat.id)
 
 
 @bot.message_handler(commands=['history'])
 def ex_command(message):
     cur = conn.cursor()
-    postgreSQL_select_Query = """ SELECT * FROM EXCHANGE WHERE CHATID = %s"""
     real_id = str(message.chat.id)
-    cur.execute(postgreSQL_select_Query, (real_id,))
-    user_records = cur.fetchall()
     try:
+        cur.execute(postgreSQL_select_Query, (real_id,))
+        user_records = cur.fetchall()
+        result = ""
         for row in user_records:
-            invalute = row[1]
-            outvalute = row[2]
-            invalue = row[3]
-            outvalue = row[4]
-            data = row[7]
-            nmessage = "Входная валюта: {0}, выходная валюта: {1}, входное значение: {2}, результат: {3}," \
-                       "дата: {4}".format(invalute, outvalute, invalue, outvalue, data)
-            bot.send_message(message.chat.id, nmessage)
+            result += "Входная валюта: {0}, выходная валюта: {1}, входное значение: {2}, результат: {3}," \
+                      "дата: {4}\n".format(row[1], row[2], row[3], row[4], row[7])
+        bot.send_message(message.chat.id, result)
     except (Exception, psycopg2.Error) as error:
         bot.send_message(message.chat.id, "Database error")
     finally:
