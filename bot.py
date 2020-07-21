@@ -4,7 +4,7 @@ from util.moneycurs import *
 from datetime import datetime
 from util.db_connection import *
 
-bot = telebot.TeleBot('')
+bot = telebot.TeleBot('1313518366:AAHBOBQXYIY3UYa8IjOvn-r4TPj8oPiwXvI')
 
 current_money = ""
 current_value = 0
@@ -55,33 +55,18 @@ def callback_currencies(call):
         global current_money
         if call.data == "USD" or call.data == "EUR" or call.data == "CAD":
             money_switcher = {
-                'USD': f"💰Dollar:  {usd_price} руб",
-                'EUR': f"💰Euro: {eur_price} руб",
-                'CAD': f"💰Canadian Dollar: {cad_price} руб"
+                'USD': f"💰Dollar:  {get_course(call.data)} руб",
+                'EUR': f"💰Euro: {get_course(call.data)} руб",
+                'CAD': f"💰Canadian Dollar: {get_course(call.data)} руб"
             }
             money_response = money_switcher.get(call.data)
             if money_response:
                 bot.send_message(call.message.chat.id, money_response)
-        if call.data == "dollar":
+        elif call.data == "dollar" or "euro" or "cdollar":
             bot.edit_message_reply_markup(call.message.chat.id, message_id=call.message.message_id, reply_markup='')
-            current_money = "dollar"
-            sent = bot.send_message(call.message.chat.id,
-                                    "Введите количество рублей для перевода, если значение не целое,"
-                                    "то вводите через точку.")
-            bot.register_next_step_handler(sent, input_value)
-        elif call.data == "euro":
-            bot.edit_message_reply_markup(call.message.chat.id, message_id=call.message.message_id, reply_markup='')
-            current_money = "euro"
-            sent = bot.send_message(call.message.chat.id,
-                                    "Введите количество рублей для перевода, если значение не целое,"
-                                    "то вводите через точку.")
-            bot.register_next_step_handler(sent, input_value)
-        elif call.data == "cdollar":
-            bot.edit_message_reply_markup(call.message.chat.id, message_id=call.message.message_id, reply_markup='')
-            current_money = "cdollar"
-            sent = bot.send_message(call.message.chat.id,
-                                    "Введите количество рублей для перевода, если значение не целое,"
-                                    "то вводите через точку.")
+            current_money = call.data
+            sent = bot.send_message(call.message.chat.id, "Введите количество рублей для перевода, если значение"
+                                                          "не целое, то вводите через точку")
             bot.register_next_step_handler(sent, input_value)
 
 
@@ -107,50 +92,20 @@ def input_value(message):
     cur = conn.cursor()
     if current_value is None:
         bot.send_message(message.chat.id, "Всё неправильно ввёл, давай заново.")
-    elif current_money == "dollar":
-        exchange_result = current_value / usd_price
-        bot.send_message(message.chat.id, exchange_result)
-        try:
-            record_to_insert = ("RUB", current_money, current_value, exchange_result, message.chat.username,
-                                message.chat.id, datetime.fromtimestamp(message.date))
-            cur.execute(postgre_insert_query, record_to_insert)
-            conn.commit()
-        except (Exception, psycopg2.Error) as error:
-            if conn:
-                bot.send_message(message.chat.id, "Failed to insert try again")
-        finally:
-            if conn:
-                cur.close()
-    elif current_money == "euro":
-        exchange_result = current_value / eur_price
-        bot.send_message(message.chat.id, exchange_result)
-        try:
-            record_to_insert = ("RUB", current_money, current_value, exchange_result, message.chat.username,
-                                message.chat.id, datetime.fromtimestamp(message.date))
-            cur.execute(postgre_insert_query, record_to_insert)
-            conn.commit()
-        except (Exception, psycopg2.Error) as error:
-            if conn:
-                bot.send_message(message.chat.id, "Failed to insert try again")
-        finally:
-            if conn:
-                cur.close()
-    elif current_money == "cdollar":
-        exchange_result = current_value / cad_price
-        bot.send_message(message.chat.id, exchange_result)
-        record_to_insert = ("RUB", current_money, current_value, exchange_result, message.chat.username,
-                            message.chat.id, datetime.fromtimestamp(message.date))
-        try:
-            cur.execute(postgre_insert_query, record_to_insert)
-            conn.commit()
-        except (Exception, psycopg2.Error) as error:
-            if conn:
-                bot.send_message(message.chat.id, "Failed to insert try again")
-        finally:
-            if conn:
-                cur.close()
     else:
-        bot.send_message(message.chat.id, "Введите корректные данные.")
+        exchange_result = convert(exchange_currencies.get(current_money), current_value)
+        bot.send_message(message.chat.id, exchange_result)
+        try:
+            record_to_insert = ("RUB", current_money, current_value, exchange_result, message.chat.username,
+                                message.chat.id, datetime.fromtimestamp(message.date))
+            cur.execute(postgre_insert_query, record_to_insert)
+            conn.commit()
+        except (Exception, psycopg2.Error) as error:
+            if conn:
+                bot.send_message(message.chat.id, "Failed to insert try again")
+        finally:
+            if conn:
+                cur.close()
     current_value = 0
     current_money = ""
     outro_handler(message.chat.id)
